@@ -63,6 +63,7 @@ export default function Home() {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [privacyLocked, setPrivacyLocked] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const completed = useMemo(() => tasks.filter((task) => task.done).length, [tasks]);
   const progress = Math.round((completed / tasks.length) * 100);
@@ -88,8 +89,13 @@ export default function Home() {
     toast.success("Demo restablecida", { description: "Solo se han restaurado datos sintéticos." });
   };
 
+  const blockedInputDemo = () => {
+    setPrivacyLocked(true);
+    toast("Entrada bloqueada antes de guardar", { description: "CuidaMar no permite nombres, pacientes, ubicaciones ni texto identificable." });
+  };
+
   return (
-    <div className="min-h-screen bg-[#f3f0e8] text-[#152d3d]">
+    <div className="min-h-screen bg-[#f3f0e8] text-[#152d3d]" data-privacy-mode="local-synthetic">
       <div className="mx-auto flex min-h-screen max-w-[1500px]">
         <aside className="hidden w-[260px] shrink-0 flex-col border-r border-[#d9d7cd] bg-[#eeeae0] px-6 py-7 lg:flex">
           <div className="flex items-center gap-3">
@@ -123,7 +129,7 @@ export default function Home() {
 
         <main className="min-w-0 flex-1">
           <header className="flex items-center justify-between border-b border-[#dedbd2] px-5 py-5 sm:px-9">
-            <div className="flex items-center gap-3 lg:hidden"><div className="brand-mark small"><Waves size={17} /></div><span className="font-display text-lg">CuidaMar</span></div>
+            <div className="flex items-center gap-3 lg:hidden"><Button variant="ghost" size="icon" aria-label="Abrir navegación" onClick={() => setMobileNavOpen(true)}><Menu size={20} /></Button><div className="brand-mark small"><Waves size={17} /></div><span className="font-display text-lg">CuidaMar</span></div>
             <div className="hidden items-center gap-2 text-sm text-[#6e7b7b] lg:flex"><span className="h-2 w-2 rounded-full bg-[#2b8c87]" />Demo local · datos sintéticos</div>
             <div className="relative ml-auto flex items-center gap-2">
               <Button variant="ghost" size="icon" aria-label="Ayuda" onClick={() => toast("CuidaMar no almacena información personal.", { description: "Usa únicamente plantillas genéricas." })}><CircleHelp size={19} /></Button>
@@ -154,7 +160,7 @@ export default function Home() {
 
               <aside className="space-y-5">
                 <Card className="soft-card"><CardHeader className="pb-3"><CardTitle className="flex items-center justify-between text-base"><span className="flex items-center gap-2"><SunMedium size={17} className="text-[#c67a4a]" />Pulso del bloque</span><span className="font-display text-2xl text-[#263f4d]">{progress}%</span></CardTitle></CardHeader><CardContent><div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-full border-4 border-[#cde3df] text-xs font-bold text-[#2b8c87]">{completed}/{tasks.length}</div><p className="text-xs leading-5 text-[#657774]">Avanza sin convertir la organización en una historia clínica.</p></div></CardContent></Card>
-                <Card className="soft-card"><CardHeader className="pb-3"><CardTitle className="text-base">Plantillas seguras</CardTitle><p className="text-xs leading-5 text-[#768580]">Bloques genéricos, sin nombres ni contexto identificable.</p></CardHeader><CardContent className="space-y-2">{safeTemplates.map((template) => { const Icon = template.icon; return <button key={template.title} onClick={() => addTemplate(template.title)} className="template-row"><span className="template-icon"><Icon size={16} /></span><span className="min-w-0 text-left"><span className="block text-xs font-semibold text-[#2e4854]">{template.title}</span><span className="mt-0.5 block truncate text-[11px] text-[#7d8a86]">{template.description}</span></span><Plus className="ml-auto text-[#7d9994]" size={15} /></button> })}</CardContent></Card>
+                <Card className="soft-card audit-card"><CardHeader className="pb-3"><CardTitle className="flex items-center justify-between text-base"><span className="flex items-center gap-2"><LockKeyhole size={16} className="text-[#c67a4a]" />Auditoría local</span><span className="audit-score">10/10</span></CardTitle><p className="text-xs leading-5 text-[#768580]">Controles activos antes de cualquier almacenamiento.</p></CardHeader><CardContent><div className="audit-grid"><span><Check size={13} />Sin cuenta</span><span><Check size={13} />Sin red</span><span><Check size={13} />Sin texto libre</span><span><Check size={13} />Sin pacientes</span></div><Button variant="outline" className="blocked-demo-button" onClick={blockedInputDemo}><Ban size={14} />Probar bloqueo preventivo</Button></CardContent></Card><Card className="soft-card"><CardHeader className="pb-3"><CardTitle className="text-base">Plantillas seguras</CardTitle><p className="text-xs leading-5 text-[#768580]">Bloques genéricos, sin nombres ni contexto identificable.</p></CardHeader><CardContent className="space-y-2">{safeTemplates.map((template) => { const Icon = template.icon; return <button key={template.title} onClick={() => addTemplate(template.title)} className="template-row"><span className="template-icon"><Icon size={16} /></span><span className="min-w-0 text-left"><span className="block text-xs font-semibold text-[#2e4854]">{template.title}</span><span className="mt-0.5 block truncate text-[11px] text-[#7d8a86]">{template.description}</span></span><Plus className="ml-auto text-[#7d9994]" size={15} /></button> })}</CardContent></Card>
               </aside>
             </div>
 
@@ -164,6 +170,8 @@ export default function Home() {
           </div>
         </main>
       </div>
+
+      {mobileNavOpen && <div className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)}><aside className="mobile-nav" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="brand-mark small"><Waves size={17} /></div><span className="font-display text-lg">CuidaMar</span></div><button className="modal-close" aria-label="Cerrar navegación" onClick={() => setMobileNavOpen(false)}><X size={18} /></button></div><Separator className="my-6 bg-[#d9d7cd]" /><p className="eyebrow mb-3">Espacio local</p>{navItems.map((item) => { const Icon = item.icon; return <button key={item.label} className={`nav-item ${activeNav === item.label ? "nav-item-active" : ""}`} onClick={() => { setActiveNav(item.label); setMobileNavOpen(false); }}><Icon size={17} />{item.label}</button>; })}<div className="mt-8 rounded-xl border border-[#e3b69d] bg-[#fff2ec] p-3 text-xs leading-5 text-[#9c6145]"><strong>Bloqueo activo.</strong> No se aceptan datos identificables.</div></aside></div>}
 
       {showPrivacy && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="privacy-title"><div className="privacy-modal"><div className="flex items-start justify-between"><div><div className="brand-mark small mb-4"><ShieldCheck size={18} /></div><p className="eyebrow">Perímetro activo</p><h2 id="privacy-title" className="mt-1 font-display text-3xl tracking-[-0.04em]">La privacidad no es un ajuste.</h2></div><button className="modal-close" aria-label="Cerrar" onClick={() => setShowPrivacy(false)}><X size={18} /></button></div><p className="mt-5 text-sm leading-6 text-[#58716f]">Es la condición de entrada. Esta demo no tiene cuenta, no envía datos y no permite guardar información personal, sanitaria o identificable.</p><Separator className="my-6 bg-[#dfe4dc]" /><div className="space-y-3"><div className="modal-rule"><Check size={16} />Solo tareas y plantillas genéricas</div><div className="modal-rule"><Check size={16} />Datos sintéticos precargados</div><div className="modal-rule"><Check size={16} />Sin pacientes, nombres o documentos</div><div className="modal-rule"><Check size={16} />Limpieza local con un clic</div></div><div className="mt-7 flex justify-end gap-2"><Button variant="outline" className="border-[#cbd8d2]" onClick={() => setShowPrivacy(false)}>Volver</Button><Button className="button-teal" onClick={() => { lockSensitive(); setShowPrivacy(false); }}>Mantener bloqueado <LockKeyhole size={15} /></Button></div></div></div>}
     </div>
