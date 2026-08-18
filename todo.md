@@ -1,13 +1,32 @@
-# Auditoría integral CuidaMar Privacidad
+# Plan de portabilidad CuidaMar Privacidad
 
-- [x] Revisar todos los flujos interactivos y estados vacíos.
-- [x] Confirmar que no existen campos de datos personales, sanitarios o identificables.
-- [x] Añadir bloqueo preventivo para entradas sensibles y mensajes no culpabilizantes.
-- [x] Mejorar el centro de privacidad con alcance, límites y modo de limpieza.
-- [x] Revisar accesibilidad: foco, etiquetas, contraste, teclado y reduced motion.
-- [x] Revisar responsive en móvil, tablet y escritorio.
-- [x] Mejorar semántica HTML y navegación por regiones.
-- [x] Añadir estados de error, éxito y confirmación sin datos persistentes.
-- [x] Revalidar diseño visual, jerarquía, densidad y consistencia de marca.
-- [x] Ejecutar TypeScript, build y revisión visual final.
-- [x] Guardar un único checkpoint final de la auditoría.
+- [x] Definir un modelo de datos mínimo para tareas, plantillas, estados y preferencias no identificables.
+- [x] Prohibir en esquema y API nombres, correos, teléfonos, pacientes, habitaciones, camas, diagnósticos, nóminas y texto libre.
+- [x] Elegir una base portable basada en SQL estándar y documentar variables de entorno.
+- [x] Añadir backend/API propia con operaciones CRUD genéricas y validación estricta.
+- [x] Mantener una opción local para desarrollo sin credenciales externas.
+- [x] Sustituir referencias exclusivas de Manus en la aplicación portable.
+- [x] Añadir migraciones y documentación de instalación/exportación.
+- [x] Ejecutar pruebas de tipos, compilación, contrato de persistencia y verificación de tablas sin insertar datos de prueba.
+- [x] Guardar un checkpoint portable antes de entregar.
+
+## Orden de ejecución final
+
+- [x] Eliminar restos de apuntes y artefactos no necesarios para la aplicación portable.
+- [x] Vaciar y aislar la tabla heredada de identidad; el sistema bloquea su eliminación física y la aplicación no la utiliza.
+- [x] Revisar que el repositorio no contenga secretos, nombres reales, datos sanitarios ni referencias institucionales no autorizadas.
+- [x] Completar la integración de preferencias y persistencia genérica sin texto libre.
+- [x] Ejecutar auditoría técnica, pruebas, build y revisión visual final.
+- [ ] Crear checkpoint final y exportar el proyecto a un repositorio privado de GitHub.
+
+## Correcciones finales de auditoría
+
+- [x] Eliminar el archivo residual de configuración del entorno anterior.
+- [x] Conectar la UI a listar, crear, completar y limpiar tareas persistidas, con estados de carga y error.
+- [x] Repetir la búsqueda final de referencias residuales y secretos.
+- [x] Capturar la revisión visual posterior a todas las limpiezas.
+- [x] Añadir estados visibles de carga, error y vacío para la lista portable de tareas.
+- [x] Verificar visualmente esos estados antes de cerrar la auditoría.
+- [x] Forzar y revisar visualmente el estado de carga de la lista portable.
+- [x] Forzar y revisar visualmente el estado de error de la lista portable.
+- [x] Forzar y revisar visualmente el estado vacío de la lista portable.

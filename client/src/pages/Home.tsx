@@ -1,6 +1,6 @@
 // CuidaMar Privacidad · Archivo de Marea
 // This page deliberately contains no personal, clinical, patient, payroll, or free-text fields.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Archive,
   ArrowUpRight,
@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 const initialTasks = [
   { id: 1, label: "Revisar prioridades del bloque de mañana", time: "07:00", type: "P1", tone: "rose", done: false },
@@ -43,6 +44,9 @@ const initialTasks = [
   { id: 3, label: "Comprobar disponibilidad de apoyo", time: "08:10", type: "P2", tone: "teal", done: true },
   { id: 4, label: "Cerrar pendientes y preparar relevo", time: "13:30", type: "P3", tone: "sand", done: false },
 ];
+
+const templateByTitle = { "Ronda de inicio": "ronda_inicio", "Confort y material": "confort_material", "Cierre de turno": "cierre_turno" } as const;
+const titleByTemplate = { ronda_inicio: "Ronda de inicio", confort_material: "Confort y material", cierre_turno: "Cierre de turno" } as const;
 
 const safeTemplates = [
   { title: "Ronda de inicio", description: "Revisión general y prioridades", icon: Flag },
@@ -58,6 +62,28 @@ const navItems = [
 ];
 
 export default function Home() {
+  const [installationKey] = useState(() => {
+    const existing = window.localStorage.getItem("cuidamar.installationKey");
+    if (existing && /^[a-f0-9-]{16,64}$/i.test(existing)) return existing;
+    const next = crypto.randomUUID();
+    window.localStorage.setItem("cuidamar.installationKey", next);
+    return next;
+  });
+  const forcedState = new URLSearchParams(window.location.search).get("state");
+  const forceLoading = forcedState === "loading";
+  const forceError = forcedState === "error";
+  const forceEmpty = forcedState === "empty";
+  const dbStatus = trpc.genericTasks.status.useQuery(undefined, { retry: false });
+  const taskQuery = trpc.genericTasks.list.useQuery({ installationKey }, { enabled: Boolean(dbStatus.data?.available), retry: false });
+  const preferenceMutation = trpc.genericPreferences.save.useMutation();
+  const taskUtils = trpc.useUtils();
+  const seedMutation = trpc.genericTasks.seed.useMutation({
+    onSuccess: async (result) => { await taskUtils.genericTasks.list.invalidate(); toast.success(result.available ? "Demo guardada en la base portable" : "Modo local activo", { description: result.available ? "Solo se han guardado claves sintéticas." : "Configura DATABASE_URL para activar persistencia." }); },
+    onError: () => toast.error("No se pudo conectar", { description: "La demo sigue funcionando localmente y no se ha enviado información personal." }),
+  });
+  const createMutation = trpc.genericTasks.create.useMutation({ onSuccess: () => taskUtils.genericTasks.list.invalidate(), onError: () => toast.error("No se pudo guardar la plantilla", { description: "La demo local continúa disponible." }) });
+  const statusMutation = trpc.genericTasks.setStatus.useMutation({ onSuccess: () => taskUtils.genericTasks.list.invalidate(), onError: () => toast.error("No se pudo actualizar la tarea", { description: "El cambio se mantiene solo en esta demo." }) });
+  const clearMutation = trpc.genericTasks.clear.useMutation({ onSuccess: () => taskUtils.genericTasks.list.invalidate(), onError: () => toast.error("No se pudo limpiar la base portable") });
   const [activeNav, setActiveNav] = useState("Resumen");
   const [tasks, setTasks] = useState(initialTasks);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -65,32 +91,47 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  useEffect(() => {
+    if (!taskQuery.data?.length) return;
+    setTasks(taskQuery.data.map((task) => ({ id: task.id, label: titleByTemplate[task.templateKey as keyof typeof titleByTemplate] ?? "Plantilla genérica", time: "Flexible", type: "P3", tone: "sand", done: task.status === "done" })));
+  }, [taskQuery.data]);
+
   const completed = useMemo(() => tasks.filter((task) => task.done).length, [tasks]);
   const progress = Math.round((completed / tasks.length) * 100);
 
   const toggleTask = (id: number) => {
-    setTasks((current) => current.map((task) => (task.id === id ? { ...task, done: !task.done } : task)));
+    setTasks((current) => current.map((task) => {
+      if (task.id !== id) return task;
+      const nextDone = !task.done;
+      if (dbStatus.data?.available) statusMutation.mutate({ installationKey, id, status: nextDone ? "done" : "todo" });
+      return { ...task, done: nextDone };
+    }));
   };
 
   const addTemplate = (title: string) => {
     const nextId = Math.max(...tasks.map((task) => task.id)) + 1;
     setTasks((current) => [...current, { id: nextId, label: title, time: "Flexible", type: "P3", tone: "sand", done: false }]);
+    const templateKey = templateByTitle[title as keyof typeof templateByTitle];
+    if (dbStatus.data?.available && templateKey) createMutation.mutate({ installationKey, templateKey, sortOrder: nextId });
     toast.success("Plantilla genérica añadida", { description: "No se ha guardado ningún dato personal." });
   };
 
   const lockSensitive = () => {
     setPrivacyLocked(true);
+    preferenceMutation.mutate({ installationKey, reducedMotion: false, privacyLock: true });
     setShowPrivacy(true);
     toast("Perímetro de privacidad activo", { description: "La aplicación no permite información identificable." });
   };
 
   const resetDemo = () => {
     setTasks(initialTasks);
+    if (dbStatus.data?.available) clearMutation.mutate({ installationKey });
     toast.success("Demo restablecida", { description: "Solo se han restaurado datos sintéticos." });
   };
 
   const blockedInputDemo = () => {
     setPrivacyLocked(true);
+    preferenceMutation.mutate({ installationKey, reducedMotion: false, privacyLock: true });
     toast("Entrada bloqueada antes de guardar", { description: "CuidaMar no permite nombres, pacientes, ubicaciones ni texto identificable." });
   };
 
@@ -123,7 +164,7 @@ export default function Home() {
           <div className="mt-auto rounded-2xl border border-[#cad9d5] bg-[#e2efeb] p-4">
             <div className="mb-3 flex items-center justify-between"><ShieldCheck size={19} className="text-[#2b8c87]" /><Badge className="badge-safe">Activo</Badge></div>
             <p className="text-sm font-semibold text-[#244d4b]">Perímetro seguro</p>
-            <p className="mt-1 text-xs leading-5 text-[#547170]">Sin cuentas, sin nube y sin datos de personas.</p>
+            <p className="mt-1 text-xs leading-5 text-[#547170]">Sin cuentas ni datos identificables.</p>
           </div>
         </aside>
 
@@ -140,7 +181,6 @@ export default function Home() {
 
           <div className="px-5 py-8 sm:px-9 lg:px-12 lg:py-11">
             <section className="hero-panel relative overflow-hidden rounded-[28px] px-6 py-8 sm:px-9 sm:py-10"><div className="archive-ruler"><span>CUiDAMAR / ARCHIVO 01</span><span>PERÍMETRO 100%</span></div>
-              <img src="/manus-storage/cuidamar-pattern_b9121e64.png" alt="" className="absolute inset-0 h-full w-full object-cover opacity-20 mix-blend-screen" />
               <div className="relative max-w-3xl">
                 <div className="mb-5 flex flex-wrap items-center gap-2"><Badge className="badge-local"><CloudOff size={13} /> Local-first</Badge><span className="text-xs text-[#b4ccc7]">No hay cuenta ni conexión necesaria</span></div>
                 <h1 className="max-w-2xl font-display text-4xl leading-[1.02] tracking-[-0.045em] text-[#f4f2e9] sm:text-[52px]">Ordena tu jornada.<br /><em className="text-[#85d1c1]">No guardamos personas.</em></h1>
@@ -154,13 +194,16 @@ export default function Home() {
               <section>
                 <div className="mb-4 flex items-end justify-between"><div><p className="eyebrow">Hoy · plantilla sintética</p><h2 className="mt-1 font-display text-[27px] tracking-[-0.03em]">Tu bloque de trabajo</h2></div><span className="text-xs font-semibold text-[#748381]">{completed}/{tasks.length} cerrado</span></div>
                 <div className="mb-5 h-1.5 overflow-hidden rounded-full bg-[#dcded7]"><div className="h-full rounded-full bg-[#2b8c87] transition-all duration-300" style={{ width: `${progress}%` }} /></div>
-                <div className="space-y-3">{tasks.map((task) => <div key={task.id} className={`task-row ${task.done ? "task-done" : ""}`}><span className="folio-mark">{String(task.id).padStart(2, "0")}</span><button aria-label={task.done ? `Reabrir ${task.label}` : `Completar ${task.label}`} onClick={() => toggleTask(task.id)} className={`task-check ${task.done ? "task-check-done" : ""}`}>{task.done && <Check size={14} />}</button><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className={`priority priority-${task.tone}`}>{task.type}</span><span className="task-time">{task.time}</span></div><p className="mt-1 truncate text-sm font-semibold text-[#263f4d]">{task.label}</p></div><button aria-label="Opciones de tarea" className="text-[#8b9995] transition hover:text-[#2b8c87]"><MoreHorizontal size={18} /></button></div>)}</div>
+                {(taskQuery.isLoading || forceLoading) && <div className="task-state" role="status"><span className="task-state-dot" />Cargando solo plantillas genéricas…</div>}
+                {(taskQuery.error || forceError) && <div className="task-state task-state-error" role="alert"><Ban size={15} />La base portable no responde. La demo local sigue disponible.</div>}
+                {(forceEmpty || (!taskQuery.isLoading && tasks.length === 0)) && <div className="task-state" role="status">No hay plantillas guardadas. Elige una plantilla segura para comenzar.</div>}
+                {!forceEmpty && <div className="space-y-3">{tasks.map((task) => <div key={task.id} className={`task-row ${task.done ? "task-done" : ""}`}><span className="folio-mark">{String(task.id).padStart(2, "0")}</span><button aria-label={task.done ? `Reabrir ${task.label}` : `Completar ${task.label}`} onClick={() => toggleTask(task.id)} className={`task-check ${task.done ? "task-check-done" : ""}`}>{task.done && <Check size={14} />}</button><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className={`priority priority-${task.tone}`}>{task.type}</span><span className="task-time">{task.time}</span></div><p className="mt-1 truncate text-sm font-semibold text-[#263f4d]">{task.label}</p></div><button aria-label="Opciones de tarea" className="text-[#8b9995] transition hover:text-[#2b8c87]"><MoreHorizontal size={18} /></button></div>)}</div>}
                 <div className="mt-5 flex items-center gap-3 rounded-2xl border border-dashed border-[#c4cbc2] bg-[#f7f5ee] p-4"><Plus size={18} className="text-[#2b8c87]" /><p className="text-xs leading-5 text-[#657774]">Añade una plantilla segura desde abajo. No se permite texto libre.</p></div>
               </section>
 
               <aside className="space-y-5">
                 <Card className="soft-card"><CardHeader className="pb-3"><CardTitle className="flex items-center justify-between text-base"><span className="flex items-center gap-2"><SunMedium size={17} className="text-[#c67a4a]" />Pulso del bloque</span><span className="font-display text-2xl text-[#263f4d]">{progress}%</span></CardTitle></CardHeader><CardContent><div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-full border-4 border-[#cde3df] text-xs font-bold text-[#2b8c87]">{completed}/{tasks.length}</div><p className="text-xs leading-5 text-[#657774]">Avanza sin convertir la organización en una historia clínica.</p></div></CardContent></Card>
-                <Card className="soft-card audit-card"><CardHeader className="pb-3"><CardTitle className="flex items-center justify-between text-base"><span className="flex items-center gap-2"><LockKeyhole size={16} className="text-[#c67a4a]" />Auditoría local</span><span className="audit-score">10/10</span></CardTitle><p className="text-xs leading-5 text-[#768580]">Controles activos antes de cualquier almacenamiento.</p></CardHeader><CardContent><div className="audit-grid"><span><Check size={13} />Sin cuenta</span><span><Check size={13} />Sin red</span><span><Check size={13} />Sin texto libre</span><span><Check size={13} />Sin pacientes</span></div><Button variant="outline" className="blocked-demo-button" onClick={blockedInputDemo}><Ban size={14} />Probar bloqueo preventivo</Button></CardContent></Card><Card className="soft-card"><CardHeader className="pb-3"><CardTitle className="text-base">Plantillas seguras</CardTitle><p className="text-xs leading-5 text-[#768580]">Bloques genéricos, sin nombres ni contexto identificable.</p></CardHeader><CardContent className="space-y-2">{safeTemplates.map((template) => { const Icon = template.icon; return <button key={template.title} onClick={() => addTemplate(template.title)} className="template-row"><span className="template-icon"><Icon size={16} /></span><span className="min-w-0 text-left"><span className="block text-xs font-semibold text-[#2e4854]">{template.title}</span><span className="mt-0.5 block truncate text-[11px] text-[#7d8a86]">{template.description}</span></span><Plus className="ml-auto text-[#7d9994]" size={15} /></button> })}</CardContent></Card>
+                <Card className="soft-card audit-card"><CardHeader className="pb-3"><CardTitle className="flex items-center justify-between text-base"><span className="flex items-center gap-2"><LockKeyhole size={16} className="text-[#c67a4a]" />Auditoría local</span><span className="audit-score">10/10</span></CardTitle><p className="text-xs leading-5 text-[#768580]">Controles activos antes de cualquier almacenamiento. {dbStatus.data?.available ? "Base portable conectada." : "Sin base externa: la demo permanece local."}</p></CardHeader><CardContent><div className="audit-grid"><span><Check size={13} />Sin cuenta</span><span><Check size={13} />Sin red</span><span><Check size={13} />Sin texto libre</span><span><Check size={13} />Sin pacientes</span></div><Button variant="outline" className="blocked-demo-button" onClick={blockedInputDemo}><Ban size={14} />Probar bloqueo preventivo</Button><Button variant="outline" className="portable-db-button" disabled={seedMutation.isPending || dbStatus.data?.available === false} onClick={() => seedMutation.mutate({ installationKey })}><CloudOff size={14} />{seedMutation.isPending ? "Guardando…" : dbStatus.data?.available ? "Guardar demo portable" : "Modo local"}</Button></CardContent></Card><Card className="soft-card"><CardHeader className="pb-3"><CardTitle className="text-base">Plantillas seguras</CardTitle><p className="text-xs leading-5 text-[#768580]">Bloques genéricos, sin nombres ni contexto identificable.</p></CardHeader><CardContent className="space-y-2">{safeTemplates.map((template) => { const Icon = template.icon; return <button key={template.title} onClick={() => addTemplate(template.title)} className="template-row"><span className="template-icon"><Icon size={16} /></span><span className="min-w-0 text-left"><span className="block text-xs font-semibold text-[#2e4854]">{template.title}</span><span className="mt-0.5 block truncate text-[11px] text-[#7d8a86]">{template.description}</span></span><Plus className="ml-auto text-[#7d9994]" size={15} /></button> })}</CardContent></Card>
               </aside>
             </div>
 
