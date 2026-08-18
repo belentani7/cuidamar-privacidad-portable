@@ -17,7 +17,7 @@
 - [x] Revisar que el repositorio no contenga secretos, nombres reales, datos sanitarios ni referencias institucionales no autorizadas.
 - [x] Completar la integración de preferencias y persistencia genérica sin texto libre.
 - [x] Ejecutar auditoría técnica, pruebas, build y revisión visual final.
-- [ ] Crear checkpoint final y exportar el proyecto a un repositorio privado de GitHub.
+- [x] Crear checkpoint final y exportar el proyecto a un repositorio privado de GitHub.
 
 ## Correcciones finales de auditoría
 
