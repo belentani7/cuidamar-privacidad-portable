@@ -45,8 +45,13 @@ const initialTasks = [
   { id: 4, label: "Cerrar pendientes y preparar relevo", time: "13:30", type: "P3", tone: "sand", done: false },
 ];
 
-const templateByTitle = { "Ronda de inicio": "ronda_inicio", "Confort y material": "confort_material", "Cierre de turno": "cierre_turno" } as const;
-const titleByTemplate = { ronda_inicio: "Ronda de inicio", confort_material: "Confort y material", cierre_turno: "Cierre de turno" } as const;
+const templateByTitle = { "Ronda de inicio": "ronda_inicio", "Confort y material": "material_generico", "Cierre de turno": "cierre_turno" } as const;
+const titleByTemplate = { ronda_inicio: "Ronda de inicio", material_generico: "Confort y material", cierre_turno: "Cierre de turno", prioridades: "Prioridades", pausa_segura: "Pausa segura", comprobacion_apoyo: "Comprobación de apoyo", bloque_profundo: "Bloque de enfoque", relevo_generico: "Relevo genérico", recuperacion: "Recuperación", revision_limites: "Revisión de límites", orden_entorno: "Orden del entorno", fin_bloque: "Fin de bloque" } as const;
+const machineModes = [
+  { key: "inicio", label: "Inicio", note: "4 operaciones de arranque" },
+  { key: "flujo", label: "Flujo", note: "4 operaciones de continuidad" },
+  { key: "cierre", label: "Cierre", note: "4 operaciones de cierre" },
+] as const;
 
 const safeTemplates = [
   { title: "Ronda de inicio", description: "Revisión general y prioridades", icon: Flag },
@@ -75,6 +80,7 @@ export default function Home() {
   const forceEmpty = forcedState === "empty";
   const dbStatus = trpc.genericTasks.status.useQuery(undefined, { retry: false });
   const taskQuery = trpc.genericTasks.list.useQuery({ installationKey }, { enabled: Boolean(dbStatus.data?.available), retry: false });
+  const machineCapacityQuery = trpc.machine.capacity.useQuery({ installationKey }, { enabled: Boolean(dbStatus.data?.available), retry: false });
   const preferenceMutation = trpc.genericPreferences.save.useMutation();
   const taskUtils = trpc.useUtils();
   const seedMutation = trpc.genericTasks.seed.useMutation({
@@ -84,12 +90,17 @@ export default function Home() {
   const createMutation = trpc.genericTasks.create.useMutation({ onSuccess: () => taskUtils.genericTasks.list.invalidate(), onError: () => toast.error("No se pudo guardar la plantilla", { description: "La demo local continúa disponible." }) });
   const statusMutation = trpc.genericTasks.setStatus.useMutation({ onSuccess: () => taskUtils.genericTasks.list.invalidate(), onError: () => toast.error("No se pudo actualizar la tarea", { description: "El cambio se mantiene solo en esta demo." }) });
   const clearMutation = trpc.genericTasks.clear.useMutation({ onSuccess: () => taskUtils.genericTasks.list.invalidate(), onError: () => toast.error("No se pudo limpiar la base portable") });
+  const batchMutation = trpc.machine.runBatch.useMutation({
+    onSuccess: async (result) => { await Promise.all([taskUtils.genericTasks.list.invalidate(), taskUtils.machine.capacity.invalidate()]); toast.success(`Lote aplicado: ${result.inserted} operaciones genéricas`, { description: "La máquina nunca recibe texto libre ni datos de personas." }); },
+    onError: () => toast.error("Límite de capacidad alcanzado", { description: "Limpia la demo o completa operaciones antes de añadir otro lote." }),
+  });
   const [activeNav, setActiveNav] = useState("Resumen");
   const [tasks, setTasks] = useState(initialTasks);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [privacyLocked, setPrivacyLocked] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [machineQueue, setMachineQueue] = useState<(typeof machineModes)[number]["key"][]>([]);
 
   useEffect(() => {
     if (!taskQuery.data?.length) return;
@@ -125,8 +136,21 @@ export default function Home() {
 
   const resetDemo = () => {
     setTasks(initialTasks);
+    setMachineQueue([]);
     if (dbStatus.data?.available) clearMutation.mutate({ installationKey });
     toast.success("Demo restablecida", { description: "Solo se han restaurado datos sintéticos." });
+  };
+
+  const enqueueMachineBatch = (batch: (typeof machineModes)[number]["key"]) => {
+    if (machineQueue.length >= 3) return toast.error("Cola de máquina llena", { description: "Ejecuta o recupera antes de preparar más lotes." });
+    setMachineQueue(current => [...current, batch]);
+    toast.success(`Lote ${batch} preparado`, { description: "Queda en cola local hasta su ejecución." });
+  };
+
+  const executeMachineQueue = () => {
+    const next = machineQueue[0];
+    if (!next) return;
+    batchMutation.mutate({ installationKey, batch: next }, { onSuccess: () => setMachineQueue(current => current.slice(1)) });
   };
 
   const blockedInputDemo = () => {
@@ -203,9 +227,11 @@ export default function Home() {
 
               <aside className="space-y-5">
                 <Card className="soft-card"><CardHeader className="pb-3"><CardTitle className="flex items-center justify-between text-base"><span className="flex items-center gap-2"><SunMedium size={17} className="text-[#c67a4a]" />Pulso del bloque</span><span className="font-display text-2xl text-[#263f4d]">{progress}%</span></CardTitle></CardHeader><CardContent><div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-full border-4 border-[#cde3df] text-xs font-bold text-[#2b8c87]">{completed}/{tasks.length}</div><p className="text-xs leading-5 text-[#657774]">Avanza sin convertir la organización en una historia clínica.</p></div></CardContent></Card>
-                <Card className="soft-card audit-card"><CardHeader className="pb-3"><CardTitle className="flex items-center justify-between text-base"><span className="flex items-center gap-2"><LockKeyhole size={16} className="text-[#c67a4a]" />Auditoría local</span><span className="audit-score">10/10</span></CardTitle><p className="text-xs leading-5 text-[#768580]">Controles activos antes de cualquier almacenamiento. {dbStatus.data?.available ? "Base portable conectada." : "Sin base externa: la demo permanece local."}</p></CardHeader><CardContent><div className="audit-grid"><span><Check size={13} />Sin cuenta</span><span><Check size={13} />Sin red</span><span><Check size={13} />Sin texto libre</span><span><Check size={13} />Sin pacientes</span></div><Button variant="outline" className="blocked-demo-button" onClick={blockedInputDemo}><Ban size={14} />Probar bloqueo preventivo</Button><Button variant="outline" className="portable-db-button" disabled={seedMutation.isPending || dbStatus.data?.available === false} onClick={() => seedMutation.mutate({ installationKey })}><CloudOff size={14} />{seedMutation.isPending ? "Guardando…" : dbStatus.data?.available ? "Guardar demo portable" : "Modo local"}</Button></CardContent></Card><Card className="soft-card"><CardHeader className="pb-3"><CardTitle className="text-base">Plantillas seguras</CardTitle><p className="text-xs leading-5 text-[#768580]">Bloques genéricos, sin nombres ni contexto identificable.</p></CardHeader><CardContent className="space-y-2">{safeTemplates.map((template) => { const Icon = template.icon; return <button key={template.title} onClick={() => addTemplate(template.title)} className="template-row"><span className="template-icon"><Icon size={16} /></span><span className="min-w-0 text-left"><span className="block text-xs font-semibold text-[#2e4854]">{template.title}</span><span className="mt-0.5 block truncate text-[11px] text-[#7d8a86]">{template.description}</span></span><Plus className="ml-auto text-[#7d9994]" size={15} /></button> })}</CardContent></Card>
+                <Card className="soft-card audit-card"><CardHeader className="pb-3"><CardTitle className="flex items-center justify-between text-base"><span className="flex items-center gap-2"><LockKeyhole size={16} className="text-[#c67a4a]" />Auditoría local</span><span className="audit-score">10/10</span></CardTitle><p className="text-xs leading-5 text-[#768580]">Controles activos antes de cualquier almacenamiento. {dbStatus.data?.available ? "Base portable conectada." : "Sin base externa: la demo permanece local."}</p></CardHeader><CardContent><div className="audit-grid"><span><Check size={13} />Sin cuenta</span><span><Check size={13} />Sin red</span><span><Check size={13} />Sin texto libre</span><span><Check size={13} />Sin pacientes</span></div><Button variant="outline" className="blocked-demo-button" onClick={blockedInputDemo}><Ban size={14} />Probar bloqueo preventivo</Button><Button variant="outline" className="portable-db-button" disabled={seedMutation.isPending || dbStatus.data?.available === false} onClick={() => seedMutation.mutate({ installationKey })}><CloudOff size={14} />{seedMutation.isPending ? "Guardando…" : dbStatus.data?.available ? "Guardar demo portable" : "Modo local"}</Button></CardContent></Card><Card className="soft-card machine-card"><CardHeader className="pb-3"><CardTitle className="flex items-center justify-between text-base"><span className="flex items-center gap-2"><Sparkles size={16} className="text-[#2b8c87]" />Máquina operativa</span><span className="audit-score">{machineCapacityQuery.data?.remaining ?? 48}</span></CardTitle><p className="text-xs leading-5 text-[#768580]">Catálogo cerrado: {machineCapacityQuery.data?.catalogSize ?? 12} operaciones; {machineCapacityQuery.data?.remaining ?? 48} espacios disponibles.</p></CardHeader><CardContent className="space-y-2">{machineModes.map((mode) => <button key={mode.key} className="template-row" disabled={batchMutation.isPending || dbStatus.data?.available === false} onClick={() => batchMutation.mutate({ installationKey, batch: mode.key })}><span className="template-icon"><Sparkles size={16} /></span><span className="min-w-0 text-left"><span className="block text-xs font-semibold text-[#2e4854]">Lote {mode.label}</span><span className="mt-0.5 block text-[11px] text-[#7d8a86]">{mode.note}</span></span><Plus className="ml-auto text-[#7d9994]" size={15} /></button>)}</CardContent></Card><Card className="soft-card"><CardHeader className="pb-3"><CardTitle className="text-base">Plantillas seguras</CardTitle><p className="text-xs leading-5 text-[#768580]">Bloques genéricos, sin nombres ni contexto identificable.</p></CardHeader><CardContent className="space-y-2">{safeTemplates.map((template) => { const Icon = template.icon; return <button key={template.title} onClick={() => addTemplate(template.title)} className="template-row"><span className="template-icon"><Icon size={16} /></span><span className="min-w-0 text-left"><span className="block text-xs font-semibold text-[#2e4854]">{template.title}</span><span className="mt-0.5 block truncate text-[11px] text-[#7d8a86]">{template.description}</span></span><Plus className="ml-auto text-[#7d9994]" size={15} /></button> })}</CardContent></Card>
               </aside>
             </div>
+
+            <section className="mt-8 rounded-2xl border border-[#cad9d5] bg-[#eaf3ef] p-5"><div className="flex items-center justify-between gap-3"><div><p className="eyebrow">Consola de capacidad</p><h2 className="mt-1 font-display text-[24px]">Cola y recuperación</h2></div><span className="audit-score">{machineQueue.length}/3</span></div><div className="mt-4 grid gap-2 sm:grid-cols-4"><div className="task-state m-0">Usadas: {machineCapacityQuery.data?.used ?? 0}</div><div className="task-state m-0">Pendientes: {machineCapacityQuery.data?.pending ?? 0}</div><div className="task-state m-0">Cerradas: {machineCapacityQuery.data?.completed ?? 0}</div><div className="task-state m-0">Capacidad: {machineCapacityQuery.data?.remaining ?? 48}</div></div><div className="mt-3 flex flex-wrap gap-2">{machineModes.map((mode) => <Button key={mode.key} variant="outline" className="portable-db-button !mt-0 !w-auto" onClick={() => enqueueMachineBatch(mode.key)}>Preparar {mode.label}</Button>)}<Button className="button-teal" disabled={!machineQueue.length || batchMutation.isPending} onClick={executeMachineQueue}>{batchMutation.isPending ? "Ejecutando…" : `Ejecutar cola (${machineQueue.length})`}</Button><Button variant="outline" className="blocked-demo-button !w-auto" onClick={resetDemo}><RotateCcw size={14} />Recuperación controlada</Button></div></section>
 
             <section className="mt-9 border-t border-[#d9d7cd] pt-7"><div className="mb-4 flex items-center justify-between"><div><p className="eyebrow">Reglas de protección</p><h2 className="mt-1 font-display text-[25px] tracking-[-0.03em]">Aquí está el límite</h2></div><Button variant="ghost" className="text-[#2b8c87] hover:bg-[#e3efeb]" onClick={() => setShowPrivacy(true)}>Ver detalles <ArrowUpRight size={15} /></Button></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><div className="rule-card blocked-rule"><span className="rule-stamp">BLOQUEADO</span><UserRoundX size={18} /><p>No nombres ni correos</p><span>La identidad no entra en la app.</span></div><div className="rule-card blocked-rule"><span className="rule-stamp">BLOQUEADO</span><FileLock2 size={18} /><p>No documentos</p><span>Nóminas y archivos quedan fuera.</span></div><div className="rule-card blocked-rule"><span className="rule-stamp">BLOQUEADO</span><EyeOff size={18} /><p>No pacientes</p><span>Ni habitación, cama u horarios.</span></div><div className="rule-card blocked-rule"><span className="rule-stamp">BLOQUEADO</span><Ban size={18} /><p>No texto libre</p><span>Solo plantillas genéricas.</span></div></div></section>
 

@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
-import { clearGenericTasks, createGenericTask, getDb, getGenericPreferences, listGenericTasks, saveGenericPreferences, seedGenericTasks, setGenericTaskStatus } from "./db";
+import { clearGenericTasks, createGenericTask, getDb, getGenericPreferences, getMachineCapacity, listGenericTasks, MACHINE_CATALOG, runMachineBatch, saveGenericPreferences, seedGenericTasks, setGenericTaskStatus } from "./db";
 
 const installationKey = z.string().regex(/^[a-f0-9-]{16,64}$/i);
-const templateKey = z.enum(["ronda_inicio", "confort_material", "cierre_turno"]);
+const templateKey = z.enum(["ronda_inicio", "prioridades", "material_generico", "pausa_segura", "comprobacion_apoyo", "bloque_profundo", "cierre_turno", "relevo_generico", "recuperacion", "revision_limites", "orden_entorno", "fin_bloque"]);
 
 export const appRouter = router({
   genericTasks: router({
@@ -17,6 +17,11 @@ export const appRouter = router({
   genericPreferences: router({
     get: publicProcedure.input(z.object({ installationKey })).query(({ input }) => getGenericPreferences(input.installationKey)),
     save: publicProcedure.input(z.object({ installationKey, reducedMotion: z.boolean(), privacyLock: z.boolean() })).mutation(({ input }) => saveGenericPreferences(input)),
+  }),
+  machine: router({
+    catalog: publicProcedure.query(() => MACHINE_CATALOG),
+    capacity: publicProcedure.input(z.object({ installationKey })).query(({ input }) => getMachineCapacity(input.installationKey)),
+    runBatch: publicProcedure.input(z.object({ installationKey, batch: z.enum(["inicio", "flujo", "cierre"]) })).mutation(({ input }) => runMachineBatch(input)),
   }),
 });
 

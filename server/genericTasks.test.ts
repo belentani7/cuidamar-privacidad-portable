@@ -25,10 +25,19 @@ describe("genericTasks portable contract", () => {
     })).rejects.toThrow();
   });
 
-  it("accepts only the three synthetic templates", async () => {
+  it("exposes a closed catalog of generic-only operations", async () => {
     const caller = appRouter.createCaller(createContext());
     const result = await caller.genericTasks.status();
     expect(result.mode).toBe("generic-only");
     expect(result).toHaveProperty("available");
+    await expect(caller.machine.catalog()).resolves.toHaveLength(12);
+  });
+
+  it("rejects machine batches outside the three permitted modes", async () => {
+    const caller = appRouter.createCaller(createContext());
+    await expect(caller.machine.runBatch({
+      installationKey: "00000000-0000-0000-0000-000000000001",
+      batch: "clinical" as never,
+    })).rejects.toThrow();
   });
 });

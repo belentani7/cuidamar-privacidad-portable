@@ -30,3 +30,13 @@
 - [x] Forzar y revisar visualmente el estado de carga de la lista portable.
 - [x] Forzar y revisar visualmente el estado de error de la lista portable.
 - [x] Forzar y revisar visualmente el estado vacío de la lista portable.
+
+## Máquina organizativa de máxima capacidad
+
+- [x] Definir un catálogo cerrado de operaciones genéricas, sin texto libre ni identidad.
+- [x] Construir una consola de capacidad con flujos, carga y progreso agregados.
+- [x] Añadir ejecución por lotes de plantillas seguras y recuperación controlada.
+- [x] Incorporar límites de capacidad, cola local y bloqueo preventivo permanente.
+- [x] Conectar el motor de máquina a persistencia exclusivamente genérica.
+- [x] Añadir pruebas de contrato para operaciones por lotes y controles de seguridad.
+- [x] Validar la máquina en escritorio y móvil y guardar un checkpoint de máxima capacidad.
