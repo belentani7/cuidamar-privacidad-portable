@@ -10,17 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install -g pnpm@9 --no-audit --no-fund
+          cache: pnpm
       - name: neutralise a malformed pnpm workspace file
         run: |
           if [ -f pnpm-workspace.yaml ] && ! grep -qE '^packages:' pnpm-workspace.yaml; then
             echo "pnpm-workspace.yaml declares no packages; disabling it for this run."
             mv pnpm-workspace.yaml pnpm-workspace.yaml.disabled
           fi
-      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm run check
       - name: Tests
