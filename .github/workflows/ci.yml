@@ -21,6 +21,10 @@ jobs:
             mv pnpm-workspace.yaml pnpm-workspace.yaml.disabled
           fi
       - run: pnpm install --no-frozen-lockfile
+      - name: Typecheck
+        run: pnpm run check
+      - name: Tests
+        run: pnpm run test
       - name: detect build script
         id: buildscript
         run: |
