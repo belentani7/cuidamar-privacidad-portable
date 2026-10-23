@@ -15,7 +15,7 @@ jobs:
           version: 10.4.1
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - name: neutralise a malformed pnpm workspace file
         run: |
@@ -28,6 +28,8 @@ jobs:
         run: pnpm run check
       - name: Tests
         run: pnpm run test
+      - name: Offline installation-key regression
+        run: pnpm run test:installation-key
       - name: detect build script
         id: buildscript
         run: |
