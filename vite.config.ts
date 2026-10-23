@@ -21,8 +21,8 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    host: true,
-    allowedHosts: true,
+    // Local-only development by default; do not disable Vite host validation.
+    host: "127.0.0.1",
     fs: { strict: true, deny: ["**/.*"] },
   },
 });
