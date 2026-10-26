@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createInstallationKeyProvider } from "../client/src/lib/installationKey.ts";
+import { isInstallationKey } from "../shared/installationKey.ts";
 
 const UUID = "123e4567-e89b-42d3-a456-426614174000";
 const OTHER_UUID = "123e4567-e89b-42d3-b456-426614174001";
@@ -62,4 +63,28 @@ test("keeps the key in memory when no browser storage exists", () => {
   const getKey = createInstallationKeyProvider(() => null, () => UUID);
   assert.equal(getKey(), UUID);
   assert.equal(getKey(), UUID);
+});
+
+
+test("does not reuse separator-only storage as a cross-installation identifier", () => {
+  const storage = memoryStorage("----------------");
+  const getKey = createInstallationKeyProvider(() => storage, () => UUID);
+  assert.equal(getKey(), UUID);
+  assert.equal(storage.value(), UUID);
+});
+
+test("preserves legitimate hexadecimal legacy installation identifiers", () => {
+  const legacy = "a1b2c3d4e5f60708";
+  const storage = memoryStorage(legacy);
+  const getKey = createInstallationKeyProvider(() => storage, () => UUID);
+  assert.equal(getKey(), legacy);
+  assert.equal(storage.value(), legacy);
+});
+
+test("shared API validator rejects malformed keys and preserves valid legacy forms", () => {
+  assert.equal(isInstallationKey("----------------"), false);
+  assert.equal(isInstallationKey("a-b-c-d-e-f-g-h-i-j-k-l"), false);
+  assert.equal(isInstallationKey("a1b2c3d4e5f60708"), true);
+  assert.equal(isInstallationKey(UUID), true);
+  assert.equal(isInstallationKey(null), false);
 });

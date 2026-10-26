@@ -1,4 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
+import { isInstallationKey } from "../shared/installationKey";
 import { drizzle } from "drizzle-orm/mysql2";
 import { genericPreferences, genericTasks, type GenericPreferences, type GenericTask } from "../drizzle/schema";
 
@@ -10,9 +11,8 @@ export async function getDb() {
   return _db;
 }
 
-const installationKeyPattern = /^[a-f0-9-]{16,64}$/i;
 export function assertInstallationKey(value: string) {
-  if (!installationKeyPattern.test(value)) throw new Error("Invalid installation key");
+  if (!isInstallationKey(value)) throw new Error("Invalid installation key");
   return value;
 }
 
