@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { isInstallationKey } from "../shared/installationKey";
 import { publicProcedure, router } from "./_core/trpc";
 import { clearGenericTasks, createGenericTask, getDb, getGenericPreferences, getMachineCapacity, listGenericTasks, MACHINE_CATALOG, runMachineBatch, saveGenericPreferences, seedGenericTasks, setGenericTaskStatus } from "./db";
 
-const installationKey = z.string().regex(/^[a-f0-9-]{16,64}$/i);
+const installationKey = z.string().refine(isInstallationKey, "Invalid installation key");
 const templateKey = z.enum(["ronda_inicio", "prioridades", "material_generico", "pausa_segura", "comprobacion_apoyo", "bloque_profundo", "cierre_turno", "relevo_generico", "recuperacion", "revision_limites", "orden_entorno", "fin_bloque"]);
 
 export const appRouter = router({

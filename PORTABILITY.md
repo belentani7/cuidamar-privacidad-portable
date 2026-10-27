@@ -2,9 +2,9 @@
 
 ## Alcance
 
-CuidaMar Privacidad está preparado como una aplicación React/Vite con servidor Express y API tRPC. La única persistencia funcional de producto corresponde a `generic_tasks`, una tabla que contiene una clave aleatoria de instalación, una clave fija de plantilla, un estado y un orden. No existe ningún campo para nombres, correos, teléfonos, pacientes, camas, habitaciones, diagnósticos, nóminas, texto libre o documentos.
+CuidaMar Privacidad está preparado como una aplicación React/Vite con servidor Express y API tRPC. La persistencia funcional de producto corresponde a `generic_tasks` (clave aleatoria de instalación, clave fija de plantilla, estado y orden) y `generic_preferences` (preferencias genéricas de movimiento y bloqueo). No existe ningún campo para nombres, correos, teléfonos, pacientes, camas, habitaciones, diagnósticos, nóminas, texto libre o documentos.
 
-La aplicación no utiliza OAuth, almacenamiento gestionado ni cabeceras de sesión de un proveedor concreto para su funcionamiento. Los recursos visuales son parte de la interfaz y el servidor solo necesita una base de datos compatible si se desea persistencia.
+La aplicación no utiliza OAuth, almacenamiento gestionado ni cabeceras de sesión de un proveedor concreto para su funcionamiento. La API anónima no tiene autenticación de usuario: no debe exponerse a Internet con una base compartida o datos sensibles. Los recursos visuales son parte de la interfaz y el servidor solo necesita una base de datos compatible si se desea persistencia.
 
 ## Requisitos externos
 
@@ -29,17 +29,17 @@ pnpm build
 NODE_ENV=production PORT=3000 pnpm start
 ```
 
-El script `pnpm dev` ejecuta el servidor Express y Vite. La API portable se expone en `/api/trpc` y el cliente usa únicamente `fetch` same-origin.
+El script `pnpm dev` ejecuta el servidor Express y Vite. La API portable se expone en `/api/trpc` y el cliente usa únicamente `fetch` same-origin. **El servidor Express escucha solo en `127.0.0.1` por defecto** (también en producción local); la configuración de Vite no debe desactivar la validación de `Host`. Para enlazar una IP externa se deben configurar explícitamente `HOST=0.0.0.0` y `ALLOW_NETWORK_BIND=true`; **esto no añade autenticación** y no debe usarse con datos reales ni en redes no confiables.
 
 ## Base de datos
 
-La migración inicial se encuentra en `drizzle/0000_sweet_silver_sable.sql`. En una base nueva, se debe ejecutar mediante el flujo de migraciones del proveedor o con el comando documentado por Drizzle. La migración crea `generic_tasks` y la tabla técnica `users` del template; CuidaMar no usa `users` para sus funciones genéricas.
+La migración inicial se encuentra en `drizzle/0000_sudden_logan.sql`. En una base nueva, se debe ejecutar mediante el flujo de migraciones del proveedor o con el comando documentado por Drizzle. La migración crea `generic_tasks` y `generic_preferences`; no crea una tabla `users`.
 
 Antes de activar persistencia, debe hacerse una copia de seguridad de la base y verificarse que el proveedor no comparte la base con datos hospitalarios. La base debe ser exclusiva para esta aplicación y debe tener cifrado en tránsito, copias de seguridad y control de acceso según el proveedor elegido.
 
 ## Modelo de seguridad
 
-La clave `installationKey` se crea aleatoriamente en el navegador y solo sirve para separar una instalación anónima de otra. La API valida el formato de esa clave y permite únicamente las tres plantillas fijas: `ronda_inicio`, `confort_material` y `cierre_turno`. No hay endpoint de texto libre ni de archivos.
+La clave `installationKey` se crea aleatoriamente en el navegador y solo sirve para separar una instalación anónima de otra. Si el navegador deniega `localStorage`, permanece únicamente en memoria durante esa sesión. No es una credencial de autenticación ni protege datos clínicos. La API valida el formato de esa clave y permite únicamente las tres plantillas fijas: `ronda_inicio`, `confort_material` y `cierre_turno`. No hay endpoint de texto libre ni de archivos.
 
 Esta arquitectura reduce el riesgo, pero no constituye una certificación legal ni permite tratar datos de pacientes. Si el uso cambia y se pretende registrar información asistencial real, hay que detener esta versión y realizar una evaluación formal con el responsable de protección de datos y el centro sanitario.
 
