@@ -10,7 +10,7 @@ export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
-    allowedHosts: true as const,
+    // Keep Vite's built-in allowed-host validation; true enables DNS rebinding.
   };
 
   const vite = await createViteServer({

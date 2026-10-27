@@ -12,7 +12,7 @@ Leer en este orden: `README.md`, `PORTABILITY.md`, `SECURITY.md`, `client/src/pa
 - Drizzle + MySQL/TiDB **opcional**; tablas `generic_tasks` y `generic_preferences`. No hay cuentas ni perfiles.
 - Identificador aleatorio por instalación: separa plantillas, **no es autorización**. Si el navegador bloquea almacenamiento, la clave solo persiste en memoria hasta recargar.
 - Sin almacenamiento de voz, documentos, información clínica o contenido de terceros. No añadirlo por inferencia.
-- Publicación restringida: código privado y producto sin destino de hosting ni validación de seguridad; no cambiar visibilidad, no desplegar automáticamente.
+- Publicación restringida: repositorio **público** según GitHub el 27-10-2026; producto sin destino de hosting ni validación de seguridad. No cambiar visibilidad ni desplegar automáticamente. Express escucha en loopback por defecto; la exposición de red exige `HOST=<IP>` y `ALLOW_NETWORK_BIND=true`, sin que eso proporcione autenticación.
 
 ## Visión de máximo potencial útil
 Experiencia local-first clara, accesible y responsive; plantillas genéricas cerradas, límites explícitos, estado de sincronización verdadero, restauración segura, preferencia de movimiento, navegación funcional, teclado y foco, errores recuperables, carga/empty/error honestos. Mejorar estabilidad, rendimiento y pruebas antes de nuevas funciones. Si se desea gestión de pacientes o colaboración entre usuarios, **detener y exigir un producto nuevo con diseño de seguridad/privacidad y autorización específica**, no ampliar esta demo silenciosamente.
@@ -27,4 +27,4 @@ Experiencia local-first clara, accesible y responsive; plantillas genéricas cer
 7. Estado final `VERIFIED`, `PARTIAL` o `BLOCKED` con SHA, pruebas ejecutadas, CI runner real, revisión independiente, privacidad y despliegue verificado. No confundir tests aislados con suite completa ni `READY` con release seguro.
 
 ## Prompt operativo reutilizable
-«Trabaja exclusivamente en `belentani7/cuidamar-privacidad-portable` (#188), conserva su propósito de demo genérica sin PII, inspecciona archivos y PR existentes, encuentra un fallo funcional reproducible, corrígelo en la rama aislada, añade regresión ejecutable, contrasta el diff y documenta SHA/CI/pruebas reales. Mantén privado, sin despliegue ni gastos mientras no se cumplan los gates; no inventes datos, cumplimiento ni respaldos».
+«Trabaja exclusivamente en `belentani7/cuidamar-privacidad-portable` (#188), conserva su propósito de demo genérica sin PII, inspecciona archivos y PR existentes, encuentra un fallo funcional reproducible, corrígelo en la rama aislada, añade regresión ejecutable, contrasta el diff y documenta SHA/CI/pruebas reales. No alteres la visibilidad pública actual, sin despliegue ni gastos mientras no se cumplan los gates; no inventes datos, cumplimiento ni respaldos».

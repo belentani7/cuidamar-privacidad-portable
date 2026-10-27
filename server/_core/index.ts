@@ -6,20 +6,21 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { resolveListenHost } from "./listenHost";
 
-function isPortAvailable(port: number): Promise<boolean> {
+function isPortAvailable(port: number, host: string): Promise<boolean> {
   return new Promise(resolve => {
     const server = net.createServer();
-    server.listen(port, () => {
+    server.listen(port, host, () => {
       server.close(() => resolve(true));
     });
     server.on("error", () => resolve(false));
   });
 }
 
-async function findAvailablePort(startPort: number = 3000): Promise<number> {
+async function findAvailablePort(startPort: number = 3000, host: string = "127.0.0.1"): Promise<number> {
   for (let port = startPort; port < startPort + 20; port++) {
-    if (await isPortAvailable(port)) {
+    if (await isPortAvailable(port, host)) {
       return port;
     }
   }
@@ -27,6 +28,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  const host = resolveListenHost(process.env.HOST, process.env.ALLOW_NETWORK_BIND);
   const app = express();
   const server = createServer(app);
   // The API only accepts short, fixed synthetic identifiers: no file uploads or free text.
@@ -48,14 +50,18 @@ async function startServer() {
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  const port = await findAvailablePort(preferredPort, host);
 
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  if (!["127.0.0.1", "::1", "localhost"].includes(host)) {
+    console.warn("CuidaMar is listening on a network interface without authentication. Never use sensitive data.");
+  }
+  server.listen(port, host, () => {
+    const displayHost = host.includes(":") ? `[${host}]` : host;
+    console.log(`Server running on http://${displayHost}:${port}/`);
   });
 }
 

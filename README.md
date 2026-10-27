@@ -1,6 +1,6 @@
 # cuidamar-privacidad-portable
 
-CuidaMar Privacidad es una demo independiente de organización de turnos con **plantillas sintéticas cerradas**. No es una herramienta sanitaria ni admite información personal o clínica. La API tRPC puede persistir tareas y preferencias genéricas en una base MySQL/TiDB **opcional**. No hay autenticación de usuario: **no desplegar con datos sensibles**.
+CuidaMar Privacidad es una demo independiente de organización de turnos con **plantillas sintéticas cerradas**. No es una herramienta sanitaria ni admite información personal o clínica. La API tRPC puede persistir tareas y preferencias genéricas en una base MySQL/TiDB **opcional**. No hay autenticación de usuario: **no desplegar con datos sensibles**. El servidor Express escucha únicamente en `127.0.0.1` por defecto; para enlazar una IP de red se requieren **ambas** variables `HOST=<IP>` y `ALLOW_NETWORK_BIND=true`. Esto expone una API sin autenticación: no habilitarlo en una red no confiable ni con datos reales.
 
 ## Stack
 

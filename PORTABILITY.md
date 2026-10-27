@@ -29,7 +29,7 @@ pnpm build
 NODE_ENV=production PORT=3000 pnpm start
 ```
 
-El script `pnpm dev` ejecuta el servidor Express y Vite. La API portable se expone en `/api/trpc` y el cliente usa únicamente `fetch` same-origin.
+El script `pnpm dev` ejecuta el servidor Express y Vite. La API portable se expone en `/api/trpc` y el cliente usa únicamente `fetch` same-origin. **El servidor Express escucha solo en `127.0.0.1` por defecto** (también en producción local); la configuración de Vite no debe desactivar la validación de `Host`. Para enlazar una IP externa se deben configurar explícitamente `HOST=0.0.0.0` y `ALLOW_NETWORK_BIND=true`; **esto no añade autenticación** y no debe usarse con datos reales ni en redes no confiables.
 
 ## Base de datos
 
